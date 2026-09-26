@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ditto Second Opinion: Claim Replay and Neutrality Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#13233F; --paper:#EEF2F6; --surface:#FFFFFF; --line:#CBD3DE; --muted:#56657A;
+  --paid:#177E5B; --paid-soft:#D7EFE5; --oop:#C8374A; --oop-soft:#F8DDE1; --link:#2F55A4; --hl:#FFF4C9;
+  --radius-s:6px; --radius-m:12px;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --ink:#E6ECF5; --paper:#0F1826; --surface:#172234; --line:#2C3A52; --muted:#9AA9BF;
+  --paid:#3FBF8C; --paid-soft:#173A31; --oop:#F06A7C; --oop-soft:#43202A; --link:#8FB0F2; --hl:#3A3417; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --ink:#E6ECF5; --paper:#0F1826; --surface:#172234; --line:#2C3A52; --muted:#9AA9BF;
+  --paid:#3FBF8C; --paid-soft:#173A31; --oop:#F06A7C; --oop-soft:#43202A; --link:#8FB0F2; --hl:#3A3417; color-scheme:dark; }
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%; scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:"Schibsted Grotesk", "Helvetica Neue", Arial, system-ui, sans-serif;
+  font-size:16px; line-height:1.5; font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased}
+button,select,input{font:inherit; color:inherit}
+:focus-visible{outline:3px solid var(--link); outline-offset:2px}
+a{color:var(--link)}
+.topbar{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--surface); border-bottom:1px solid var(--line)}
+.topbar-inner{max-width:1180px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+.brand{font-weight:800; font-size:1.15rem; letter-spacing:-0.01em}
+.brand small{display:block; font-weight:500; font-size:.78rem; color:var(--muted); letter-spacing:0}
+.switch{margin-left:auto; display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:3px; background:var(--paper)}
+.switch button{border:0; background:transparent; padding:7px 16px; border-radius:999px; cursor:pointer; font-weight:600; font-size:.92rem; color:var(--muted)}
+.switch button[aria-pressed="true"]{background:var(--ink); color:var(--surface)}
+main{max-width:1180px; margin:0 auto; padding:24px 20px 64px}
+.view[hidden]{display:none}
+/* customer layout */
+.cust{display:grid; grid-template-columns:300px minmax(0,1fr); gap:28px; align-items:start}
+.form{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m); padding:18px; position:sticky; top:84px}
+.form h2{font-size:1rem; margin:0 0 12px}
+.field{margin:0 0 14px}
+.field label, .field .lbl{display:block; font-size:.86rem; font-weight:600; margin-bottom:5px}
+.field .hint{font-size:.78rem; color:var(--muted)}
+select, input[type=number]{width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:var(--radius-s); background:var(--surface)}
+input[type=range]{width:100%; accent-color:var(--ink)}
+.seg{display:flex; gap:4px; flex-wrap:wrap}
+.seg button{flex:1; border:1px solid var(--line); background:var(--surface); padding:6px 4px; border-radius:var(--radius-s); cursor:pointer; font-size:.86rem}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
+.check{display:flex; gap:8px; align-items:flex-start; font-size:.9rem; margin:0 0 10px}
+.check input{margin-top:4px; accent-color:var(--ink)}
+.verdict{padding:4px 0 20px; border-bottom:1px solid var(--line)}
+.verdict .kicker{color:var(--muted); font-size:.92rem; margin:0 0 4px}
+.verdict h1{font-size:clamp(2rem, 4.2vw, 3.2rem); line-height:1.05; letter-spacing:-0.025em; margin:0 0 14px; font-weight:800; max-width:18ch}
+.verdict.dont h1{color:var(--oop)}
+.verdict.buy h1{color:var(--paid)}
+.why{margin:0; padding-left:1.2em; max-width:72ch}
+.why li{margin:0 0 6px}
+.nocomm{margin:12px 0 0; font-size:.88rem; color:var(--muted)}
+section.block{margin-top:30px}
+section.block > h2{font-size:1.35rem; letter-spacing:-0.01em; margin:0 0 4px}
+section.block > p.sub{margin:0 0 14px; color:var(--muted); max-width:72ch}
+.compare{display:flex; gap:12px; flex-wrap:wrap; margin:0 0 16px}
+.compare label{font-size:.86rem; font-weight:600; display:flex; flex-direction:column; gap:4px; min-width:200px; flex:1}
+.legend{display:flex; gap:16px; font-size:.85rem; color:var(--muted); margin:0 0 10px; flex-wrap:wrap}
+.sw{display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:6px}
+.scn{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m); padding:14px 16px; margin:0 0 12px}
+.scn-head{display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline; margin-bottom:10px}
+.scn-head h3{font-size:1.02rem; margin:0}
+.scn-head span{font-size:.85rem; color:var(--muted)}
+.barrow{display:grid; grid-template-columns:150px minmax(0,1fr) 120px; gap:10px; align-items:center; margin:6px 0}
+.barrow .pn{font-size:.86rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.bar{display:flex; height:26px; border-radius:var(--radius-s); overflow:hidden; background:var(--paper); border:0; padding:0; width:100%; cursor:pointer}
+.bar .p{background:var(--paid); height:100%; transition:width .35s ease}
+.bar .o{background:var(--oop); height:100%; transition:width .35s ease}
+.barrow .amt{font-size:.85rem; text-align:right}
+.barrow .amt b{color:var(--oop)}
+.ded{grid-column:2 / 4; background:var(--oop-soft); border-radius:var(--radius-s); padding:10px 12px; font-size:.86rem; margin:2px 0 8px}
+.ded ul{margin:0; padding-left:1.1em}
+.ded .ok{background:var(--paid-soft)}
+table{width:100%; border-collapse:collapse; font-size:.9rem}
+.tablewrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m)}
+th,td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); white-space:nowrap}
+th{font-weight:600; color:var(--muted); font-size:.82rem}
+tr:last-child td{border-bottom:0}
+td.num, th.num{text-align:right}
+tr.pick td{background:var(--paid-soft)}
+tr.mine td{background:var(--hl)}
+.actions{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:18px}
+.btn{border:0; background:var(--ink); color:var(--surface); padding:11px 18px; border-radius:var(--radius-s); font-weight:700; cursor:pointer}
+.btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--line)}
+.toast{font-size:.9rem; color:var(--paid); font-weight:600}
+/* ledger */
+.ledger-hero h1{font-size:clamp(1.8rem, 3.6vw, 2.8rem); line-height:1.1; letter-spacing:-0.02em; margin:0 0 10px; max-width:26ch}
+.ledger-hero p{color:var(--muted); max-width:70ch; margin:0}
+.lgrid{display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:24px; margin-top:26px}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m); padding:18px}
+.panel h2{font-size:1.05rem; margin:0 0 4px}
+.panel p.sub{margin:0 0 12px; color:var(--muted); font-size:.88rem}
+.stat{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:12px 0; border-bottom:1px solid var(--line)}
+.stat:last-child{border-bottom:0}
+.stat .v{font-size:1.6rem; font-weight:800; letter-spacing:-0.02em}
+.stat .d{font-size:.86rem; color:var(--muted); max-width:30ch}
+.status{display:inline-block; font-size:.78rem; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; vertical-align:3px}
+.status.good{background:var(--paid-soft); color:var(--paid)}
+.status.watch{background:var(--oop-soft); color:var(--oop)}
+.mixrow{display:grid; grid-template-columns:130px minmax(0,1fr) 90px; gap:10px; align-items:center; font-size:.86rem; margin:8px 0}
+.mixbars{display:flex; flex-direction:column; gap:3px}
+.mixbars div{height:9px; border-radius:3px}
+svg text{font-family:inherit; fill:var(--muted); font-size:12px}
+.note{font-size:.82rem; color:var(--muted); margin-top:26px; max-width:90ch}
+@media (max-width:900px){ .cust{grid-template-columns:minmax(0,1fr)} .form{position:static} .lgrid{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:560px){ .barrow{grid-template-columns:1fr; gap:4px} .barrow .amt{text-align:left} .ded{grid-column:1} .switch{margin-left:0; width:100%} .switch button{flex:1} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <div class="brand">Ditto Second Opinion<small>Concept prototype for a strategy case. Fictional plans, illustrative numbers.</small></div>
+  <div class="switch" role="group" aria-label="Choose view">
+    <button id="tabCust" aria-pressed="true">For you</button>
+    <button id="tabLedger" aria-pressed="false">Public ledger</button>
+  </div>
+</div></header>
+<main>
+<div id="viewCust" class="view">
+  <div class="cust">
+    <form class="form" id="profile" onsubmit="return false" aria-label="Your household">
+      <h2>Your household</h2>
+      <div class="field"><label for="age">Age of eldest adult: <span id="ageV">32</span></label><input type="range" id="age" min="22" max="60" value="32"></div>
+      <div class="field"><span class="lbl">City</span><div class="seg" id="tier">
+        <button type="button" data-v="1" aria-pressed="false">Metro</button><button type="button" data-v="2" aria-pressed="true">Tier 2</button><button type="button" data-v="3" aria-pressed="false">Tier 3</button></div></div>
+      <div class="field"><label for="family">Who needs cover</label><select id="family">
+        <option value="single">Just me</option><option value="couple" selected>Couple</option><option value="couple1">Couple + 1 child</option><option value="couple2">Couple + 2 children</option></select></div>
+      <label class="check"><input type="checkbox" id="planningChild" checked> Planning a child in the next 3 years</label>
+      <label class="check"><input type="checkbox" id="ped"> Someone has an existing condition such as diabetes or BP</label>
+      <div class="field"><label for="employer">Employer health cover: ₹<span id="empV">5</span> lakh</label><input type="range" id="employer" min="0" max="10" step="1" value="5"><div class="hint">Set to 0 if you have none</div></div>
+      <label class="check"><input type="checkbox" id="jobChange" checked> I may change jobs in the next 2 years</label>
+      <div class="field"><label for="year">Replay claims in policy year <span id="yearV">3</span></label><input type="range" id="year" min="1" max="5" value="3"><div class="hint">Waiting periods decide what is paid in early years</div></div>
+    </form>
+    <div>
+      <div class="verdict" id="verdict" aria-live="polite"></div>
+      <section class="block">
+        <h2>Claim Replay</h2>
+        <p class="sub">What each plan would actually pay on real hospital bills for your city, and what you would pay yourself. Select a bar to see every deduction.</p>
+        <div class="compare">
+          <label>Plan A<select id="planA"></select></label>
+          <label>Plan B<select id="planB"></select></label>
+        </div>
+        <div class="legend"><span><i class="sw" style="background:var(--paid)"></i>Insurer pays</span><span><i class="sw" style="background:var(--oop)"></i>You pay</span></div>
+        <div id="replay"></div>
+      </section>
+      <section class="block">
+        <h2>Commission receipt</h2>
+        <p class="sub">Every plan we assessed, in the order our rules ranked them, with what Ditto would earn on each. Commission was never an input to the ranking.</p>
+        <div class="tablewrap"><table id="receipt"></table></div>
+        <div class="actions"><button class="btn" id="logBtn" type="button">Log this session to the public ledger</button><span class="toast" id="toast" role="status"></span></div>
+      </section>
+    </div>
+  </div>
+</div>
+<div id="viewLedger" class="view" hidden>
+  <div class="ledger-hero" id="ledgerHero"></div>
+  <div class="lgrid">
+    <div class="panel">
+      <h2>Does commission predict what we recommend?</h2>
+      <p class="sub">Each dot is a plan: the commission Ditto earns on it against how often our rules picked it first. A flat line means commission has no pull.</p>
+      <div id="scatter"></div>
+    </div>
+    <div class="panel">
+      <h2>Outcome and honesty checks</h2>
+      <p class="sub">Published every quarter and audited independently.</p>
+      <div id="stats"></div>
+    </div>
+    <div class="panel">
+      <h2>Recommendations by insurer vs market share</h2>
+      <p class="sub">Large gaps deserve a look. Here the gap follows price, not commission.</p>
+      <div id="mix"></div>
+    </div>
+    <div class="panel">
+      <h2>What the ledger is telling us</h2>
+      <div id="insight"></div>
+    </div>
+  </div>
+  <section class="block">
+    <h2>Latest sessions</h2>
+    <p class="sub">Anonymised. Your logged sessions are highlighted.</p>
+    <div class="tablewrap"><table id="sessions"></table></div>
+  </section>
+  <p class="note">How this works: the verdict engine ranks plans by risk-adjusted cost (five years of premium, plus expected out-of-pocket for your household, plus half of the worst single bill). Commission is stored with each session only so that it can be audited. The Protected Outcome Rate replays one likely claim in policy year 4 for each session and counts it as protected when the insurer pays at least 80% of the bill. The 160 background sessions are generated by the same engine from random household profiles. All plans, insurers, prices and market shares are fictional.</p>
+</div>
+</main>
+<script>
+// ===== Ditto Second Opinion — verdict engine (rules decide; commission is never an input) =====
+const L = 100000;
+const PLANS = [
+  { id:'kavach', name:'Kavach Basic', insurer:'Northstar General', si:5*L, roomCap:5000, copay:0,
+    sub:{knee:1.5*L, cataract:40000}, maternity:null, matWait:0, pedWait:4, specWait:2, consumables:false, base:9000, commission:12 },
+  { id:'suraksha', name:'Suraksha Plus', insurer:'Meridian Health', si:10*L, roomCap:null, copay:0,
+    sub:{}, maternity:50000, matWait:3, pedWait:3, specWait:2, consumables:true, base:14500, commission:18 },
+  { id:'arogya', name:'Arogya Value', insurer:'Lotus General', si:10*L, roomCap:null, copay:0.20,
+    sub:{cataract:50000}, maternity:null, matWait:0, pedWait:3, specWait:2, consumables:false, base:8500, commission:20 },
+  { id:'shield', name:'Shield Prime', insurer:'Harbor Health', si:25*L, roomCap:null, copay:0,
+    sub:{}, maternity:100000, matWait:2, pedWait:2, specWait:2, consumables:true, base:21000, commission:15 },
+  { id:'care', name:'Care Smart', insurer:'Meridian Health', si:7.5*L, roomCap:6000, copay:0.10,
+    sub:{knee:2*L}, maternity:null, matWait:0, pedWait:3, specWait:2, consumables:false, base:10500, commission:22 },
+];
+const MARKET_SHARE = { 'Northstar General':0.22, 'Meridian Health':0.31, 'Lotus General':0.19, 'Harbor Health':0.28 };
+
+// Tier-1 base bills; room = actual room rent per day in tier 1
+const SCENARIOS = [
+  { id:'dengue',   name:'Dengue, 5 days incl. ICU', bill:180000, days:5, room:8000,  spec:false, type:'acute' },
+  { id:'maternity',name:'Planned C-section delivery', bill:150000, days:4, room:7000, spec:false, type:'maternity' },
+  { id:'cardiac',  name:'Angioplasty with one stent', bill:400000, days:4, room:9000, spec:false, type:'ped' },
+  { id:'knee',     name:'Knee replacement', bill:450000, days:5, room:9000, spec:true,  type:'knee' },
+  { id:'cataract', name:'Cataract surgery, one eye', bill:60000,  days:1, room:6000, spec:true,  type:'cataract' },
+  { id:'cancer',   name:'Cancer, one year of chemo', bill:900000, days:20, room:8000, spec:false, type:'acute' },
+];
+const RISK_WEIGHT = 0.5; // share of the worst-case bill added to cost: a catastrophic bill is what insurance is for
+const TIER = { 1:1.0, 2:0.75, 3:0.6 };
+const FAMILY = {
+  single:{adults:1, kids:0, label:'Just me'}, couple:{adults:2, kids:0, label:'Couple'},
+  couple1:{adults:2, kids:1, label:'Couple + 1 child'}, couple2:{adults:2, kids:2, label:'Couple + 2 children'} };
+
+function ageFactor(a){ const pts=[[22,.8],[30,1],[35,1.15],[40,1.4],[45,1.75],[50,2.2],[55,2.8],[60,3.5]];
+  for(let i=1;i<pts.length;i++){ if(a<=pts[i][0]){const [a0,f0]=pts[i-1],[a1,f1]=pts[i]; return f0+(f1-f0)*(a-a0)/(a1-a0);} } return 3.5; }
+function premium(plan, p){ const f=FAMILY[p.family]; const mem = 1 + 0.8*(f.adults-1) + 0.35*f.kids;
+  return Math.round(plan.base*ageFactor(p.age)*mem*(p.tier===1?1:p.tier===2?.9:.8)/100)*100; }
+
+// probability over 5 years for the household (illustrative)
+function probs(p){ const f=FAMILY[p.family], a=p.age, n=f.adults+f.kids;
+  return { dengue: 1-Math.pow(1-0.06,n), maternity: (f.adults===2 && p.planningChild && a<42)?0.6:0,
+    cardiac: (a>=40?0.03:0.008)*f.adults*(p.ped?1.8:1), knee: (a>=45?0.03:0.004)*f.adults,
+    cataract: (a>=50?0.08:0.01)*f.adults, cancer: (a>=40?0.02:0.007)*f.adults }; }
+
+// Replay one claim under one policy. Returns itemised deductions.
+function replay(plan, sc, p, year){
+  const B = Math.round(sc.bill*TIER[p.tier]); const room = Math.round(sc.room*TIER[p.tier]);
+  const d = []; const res = (paid)=>({bill:B, paid:Math.max(0,Math.round(paid)), oop:B-Math.max(0,Math.round(paid)), deductions:d});
+  if(sc.type==='maternity'){
+    if(plan.maternity==null){ d.push({why:'Maternity is not covered by this plan', amt:B}); return res(0);}
+    if(year<=plan.matWait){ d.push({why:`Maternity waiting period is ${plan.matWait} years; claim is in year ${year}`, amt:B}); return res(0);}
+    if(B>plan.maternity){ d.push({why:`Maternity sub-limit of ₹${fmt(plan.maternity)}`, amt:B-plan.maternity}); return res(plan.maternity);} return res(B);
+  }
+  if(sc.spec && year<=plan.specWait){ d.push({why:`${sc.name} has a ${plan.specWait}-year waiting period; claim is in year ${year}`, amt:B}); return res(0);}
+  if(sc.type==='ped' && p.ped && year<=plan.pedWait){ d.push({why:`Pre-existing condition waiting period is ${plan.pedWait} years; claim is in year ${year}`, amt:B}); return res(0);}
+  let adm = B;
+  if(!plan.consumables){ const nm=Math.round(B*0.07); d.push({why:'Consumables (gloves, kits, PPE) not covered', amt:nm}); adm-=nm; }
+  if(plan.roomCap && room>plan.roomCap){ const assoc=adm*0.6; const cut=Math.round(assoc*(1-plan.roomCap/room));
+    d.push({why:`Room rent capped at ₹${fmt(plan.roomCap)}/day vs ₹${fmt(room)} actual, so linked charges are cut proportionately`, amt:cut}); adm-=cut; }
+  const sl = plan.sub[sc.type];
+  if(sl!=null && adm>sl){ d.push({why:`Sub-limit of ₹${fmt(sl)} for this treatment`, amt:adm-sl}); adm=sl; }
+  if(plan.copay){ const c=Math.round(adm*plan.copay); d.push({why:`${plan.copay*100}% co-payment on every claim`, amt:c}); adm-=c; }
+  if(adm>plan.si){ d.push({why:`Sum insured of ₹${fmt(plan.si)} exhausted`, amt:adm-plan.si}); adm=plan.si; }
+  return res(adm);
+}
+function existingPlan(p){ return { id:'existing', name:'Your employer cover', insurer:'Employer group policy', si:p.employer*L,
+  roomCap:null, copay:0, sub:{}, maternity:p.employer>0?50000:null, matWait:0, pedWait:0, specWait:0, consumables:false, base:0, commission:0 }; }
+
+function evaluate(plan, p){
+  const pr = probs(p); let eoop=0, worst=0;
+  const rows = SCENARIOS.map(sc=>{ const r=replay(plan, sc, p, p.year); eoop += (pr[sc.id]||0)*r.oop; if(pr[sc.id]>0) worst=Math.max(worst,r.oop); return r; });
+  const prem = plan.id==='existing'?0:premium(plan,p)*5;
+  return { plan, rows, eoop:Math.round(eoop), worst, prem5:prem, total:Math.round(eoop)+prem+Math.round(RISK_WEIGHT*worst) };
+}
+
+// The verdict: rules only. Commission is shown to the customer but never read here.
+function verdict(p){
+  const evals = PLANS.map(pl=>evaluate(pl,p)).sort((a,b)=> a.total-b.total || a.worst-b.worst);
+  const best = evals[0]; const rules=[];
+  const ex = p.employer>0 ? evaluate(existingPlan(p),p) : null;
+  let type='buy';
+  if(ex){
+    const saving = ex.eoop - best.eoop;
+    rules.push(`Expected out-of-pocket with your employer cover alone: ₹${fmt(ex.eoop)} over 5 years; with ${best.plan.name}: ₹${fmt(best.eoop)}.`);
+    if(!p.jobChange && saving < best.prem5*0.5){ type='dont';
+      rules.push(`The best plan would cost ₹${fmt(best.prem5)} in premiums to save about ₹${fmt(Math.max(0,saving))} in expected costs, so buying now is poor value.`);
+      rules.push('Revisit when you switch jobs, add a dependant, or turn 40, Keep in mind that waiting periods only start running once you buy a personal plan.');
+    } else if(p.jobChange){ rules.push('You may change jobs within 2 years; employer cover ends with the job, so a personal plan keeps your waiting periods running.'); }
+    else rules.push('Your employer cover leaves a large expected gap, so a personal plan is worth it.');
+  } else rules.push('You have no other cover, so a personal plan is needed.');
+  if(type==='buy'){
+    rules.push(`${best.plan.name} has the lowest risk-adjusted cost (5-year premium + expected out-of-pocket + half of the worst single bill): ₹${fmt(best.total)}.`);
+    if(evals[1]) rules.push(`Runner-up ${evals[1].plan.name} costs ₹${fmt(evals[1].total-best.total)} more on the same basis.`);
+    if(p.ped) rules.push(`With your existing condition, ${best.plan.name} starts covering related treatment after ${best.plan.pedWait} years.`);
+    if(p.planningChild && FAMILY[p.family].adults===2) rules.push('Maternity cover and its waiting period were weighted in because you plan a child.');
+  }
+  return { type, best, evals, ex, rules, ranking: evals.map((e,i)=>({id:e.plan.id, rank:i+1, commission:e.plan.commission, insurer:e.plan.insurer})) };
+}
+function fmt(n){ n=Math.round(n); return n>=L ? (Math.round(n/L*100)/100).toLocaleString('en-IN')+' L' : n.toLocaleString('en-IN'); }
+
+// ---- Ledger maths ----
+function pearson(x,y){ const n=x.length, mx=x.reduce((a,b)=>a+b)/n, my=y.reduce((a,b)=>a+b)/n;
+  let sxy=0,sx=0,sy=0; for(let i=0;i<n;i++){ sxy+=(x[i]-mx)*(y[i]-my); sx+=(x[i]-mx)**2; sy+=(y[i]-my)**2; } return (sx&&sy)? sxy/Math.sqrt(sx*sy):0; }
+function rng(seed){ return ()=>{ seed=(seed*1664525+1013904223)%4294967296; return seed/4294967296; }; }
+function seedSessions(n){ const r=rng(42), out=[]; const fams=Object.keys(FAMILY);
+  for(let i=0;i<n;i++){ const p={ age:22+Math.floor(r()*38), tier:1+Math.floor(r()*3), family:fams[Math.floor(r()*4)], planningChild:r()<.3,
+      ped:r()<.2, employer:r()<.45?[3,5,5,10][Math.floor(r()*4)]:0, jobChange:r()<.35, year:1+Math.floor(r()*5) };
+    const v=verdict(p); const pool=SCENARIOS.filter(x=>x.id!=='maternity'||(p.planningChild&&FAMILY[p.family].adults===2)); const sc=pool[Math.floor(r()*pool.length)];
+    const plan = v.type==='dont' ? existingPlan(p) : v.best.plan; const rr=replay(plan, sc, {...p,year:4}, 4);
+    out.push({ seeded:true, t:Date.now()-(n-i)*3600e3*5, profile:p, type:v.type, pick:v.type==='dont'?null:v.best.plan.id, ranking:v.ranking, protectedOutcome: rr.paid/rr.bill>=0.8 }); }
+  return out; }
+function ledgerStats(sessions){
+  const picks = sessions.filter(s=>s.pick); const perPlan = PLANS.map(pl=>({plan:pl, share: picks.filter(s=>s.pick===pl.id).length/Math.max(1,picks.length)}));
+  const r = pearson(perPlan.map(x=>x.plan.commission), perPlan.map(x=>x.share));
+  const rx=[], ry=[]; sessions.forEach(s=>s.ranking.forEach(k=>{ rx.push(k.commission); ry.push(-k.rank); }));
+  const rRank = pearson(rx,ry);
+  const dont = sessions.filter(s=>s.type==='dont').length/sessions.length;
+  const por = sessions.filter(s=>s.protectedOutcome).length/sessions.length;
+  const mix = {}; picks.forEach(s=>{ const ins=PLANS.find(p=>p.id===s.pick).insurer; mix[ins]=(mix[ins]||0)+1; });
+  Object.keys(mix).forEach(k=>mix[k]/=picks.length);
+  return { perPlan, r, rRank, dont, por, mix, n:sessions.length };
+}
+// ===== UI =====
+const $=id=>document.getElementById(id);
+const state={ age:32, tier:2, family:'couple', planningChild:true, ped:false, employer:5, jobChange:true, year:3, planA:null, planB:null, open:{} };
+const STORE='ditto-ledger-v1';
+let mine=[]; try{ const raw=localStorage.getItem(STORE); if(raw) mine=JSON.parse(raw)||[]; }catch(e){ mine=[]; }
+const seeded = seedSessions(160);
+let current=null;
+
+function planById(id, p){ return id==='existing' ? existingPlan(p) : PLANS.find(x=>x.id===id); }
+function rupee(n){ return '₹'+fmt(n); }
+function pct(x){ return Math.round(x*100)+'%'; }
+
+function readForm(){
+  state.age=+$('age').value; state.family=$('family').value; state.planningChild=$('planningChild').checked;
+  state.ped=$('ped').checked; state.employer=+$('employer').value; state.jobChange=$('jobChange').checked; state.year=+$('year').value;
+  $('ageV').textContent=state.age; $('empV').textContent=state.employer; $('yearV').textContent=state.year;
+}
+function render(resetPlans){
+  readForm();
+  const p={...state}; const v=verdict(p); current={p, v};
+  // verdict
+  const vd=$('verdict'); vd.className='verdict '+(v.type==='dont'?'dont':'buy');
+  const head = v.type==='dont' ? 'Don’t buy a new plan yet.' : `Buy ${v.best.plan.name}.`;
+  vd.innerHTML = `<p class="kicker">Our verdict for your household</p><h1>${head}</h1>
+    <ul class="why">${v.rules.map(r=>`<li>${r}</li>`).join('')}</ul>
+    <p class="nocomm">Decided by published rules. Commission was not read.</p>`;
+  // plan selectors
+  const opts = PLANS.map(pl=>`<option value="${pl.id}">${pl.name} (${pl.insurer})</option>`).join('');
+  ['planA','planB'].forEach(k=>{ const el=$(k); if(!el.options.length) el.innerHTML=opts; });
+  if(resetPlans || !state.planA){ state.planA=v.evals[0].plan.id; state.planB=v.evals[1].plan.id; }
+  $('planA').value=state.planA; $('planB').value=state.planB;
+  renderReplay(p); renderReceipt(v);
+}
+function renderReplay(p){
+  const ids=[state.planA, state.planB]; if(p.employer>0) ids.push('existing');
+  const pr=probs(p);
+  $('replay').innerHTML = SCENARIOS.map(sc=>{
+    const chance=pr[sc.id]||0;
+    const rows = ids.map((id,i)=>{
+      const pl=planById(id,p); const r=replay(pl, sc, p, p.year); const key=sc.id+'|'+id+'|'+i;
+      const pw=r.paid/r.bill*100, ow=100-pw; const open=!!state.open[key];
+      const label = i===0?'Plan A: ':i===1?'Plan B: ':'';
+      const ded = open ? `<div class="ded ${r.deductions.length?'':'ok'}" id="d-${key}">${r.deductions.length?`<ul>${r.deductions.map(d=>`<li>${d.why}: <b>${rupee(d.amt)}</b></li>`).join('')}</ul>`:'No deductions. The full bill is paid.'}</div>`:'';
+      return `<div class="barrow"><div class="pn" title="${pl.name}">${label}${pl.name}</div>
+        <button class="bar" data-key="${key}" aria-expanded="${open}" aria-label="${pl.name}: insurer pays ${rupee(r.paid)}, you pay ${rupee(r.oop)}. Show deductions.">
+        <span class="p" style="width:${pw}%"></span><span class="o" style="width:${ow}%"></span></button>
+        <div class="amt">You pay <b>${rupee(r.oop)}</b></div>${ded}</div>`;
+    }).join('');
+    return `<div class="scn"><div class="scn-head"><h3>${sc.name}</h3><span>Bill ${rupee(Math.round(sc.bill*TIER[p.tier]))}${chance?`, ${pct(chance)} chance for your household in 5 years`:', not expected for your household'}</span></div>${rows}</div>`;
+  }).join('');
+  document.querySelectorAll('#replay .bar').forEach(b=>b.addEventListener('click',()=>{ const k=b.dataset.key; state.open[k]=!state.open[k]; renderReplay(current.p); }));
+}
+function renderReceipt(v){
+  const rows = v.evals.map((e,i)=>`<tr class="${i===0&&v.type==='buy'?'pick':''}"><td>${i+1}</td><td>${e.plan.name}<br><span style="color:var(--muted);font-size:.8rem">${e.plan.insurer}</span></td>
+    <td class="num">${rupee(e.prem5)}</td><td class="num">${rupee(e.eoop)}</td><td class="num">${rupee(e.worst)}</td><td class="num"><b>${rupee(e.total)}</b></td><td class="num">${e.plan.commission}%</td></tr>`).join('');
+  $('receipt').innerHTML = `<thead><tr><th>Rank</th><th>Plan</th><th class="num">5-yr premium</th><th class="num">Expected you pay</th><th class="num">Worst single bill</th><th class="num">Risk-adjusted cost</th><th class="num">Ditto earns</th></tr></thead><tbody>${rows}</tbody>`;
+}
+function logSession(){
+  const {p,v}=current; const pool=SCENARIOS.filter(x=>x.id!=='maternity'||(p.planningChild&&FAMILY[p.family].adults===2));
+  const sc=pool.reduce((a,b)=>(probs(p)[b.id]||0)>(probs(p)[a.id]||0)?b:a);
+  const plan=v.type==='dont'?existingPlan(p):v.best.plan; const rr=replay(plan, sc, {...p,year:4}, 4);
+  mine.push({ mine:true, t:Date.now(), profile:p, type:v.type, pick:v.type==='dont'?null:v.best.plan.id, ranking:v.ranking, protectedOutcome: rr.paid/rr.bill>=0.8 });
+  try{ localStorage.setItem(STORE, JSON.stringify(mine)); }catch(e){}
+  $('toast').innerHTML = `Logged to ledger. <a href="#" id="goLedger">Open the public ledger</a>`;
+  $('goLedger').addEventListener('click',ev=>{ev.preventDefault(); show('ledger');});
+  renderLedger();
+}
+function renderLedger(){
+  const all=[...seeded, ...mine]; const st=ledgerStats(all); const r=st.r;
+  const good = Math.abs(r)<=0.1 || r<0;
+  $('ledgerHero').innerHTML = `<h1>Across ${st.n} sessions, commission explains almost none of what we recommend.</h1>
+    <p>Correlation between the commission on a plan and how often it is recommended first: <b>r&nbsp;=&nbsp;${r.toFixed(2)}</b>. We publish this number every quarter. If it rises above 0.10, the rules get reviewed.</p>`;
+  // scatter
+  const W=520,H=300,m={l:48,r:16,t:16,b:42}; const xs=st.perPlan.map(x=>x.plan.commission), ys=st.perPlan.map(x=>x.share*100);
+  const x0=10,x1=24,y1=Math.max(60,Math.ceil(Math.max(...ys)/10)*10);
+  const sx=v=>m.l+(v-x0)/(x1-x0)*(W-m.l-m.r), sy=v=>H-m.b-(v/y1)*(H-m.t-m.b);
+  const n=xs.length, mx=xs.reduce((a,b)=>a+b)/n, my=ys.reduce((a,b)=>a+b)/n; let num=0,den=0; xs.forEach((x,i)=>{num+=(x-mx)*(ys[i]-my); den+=(x-mx)**2;}); const b=num/den, a=my-b*mx;
+  let g=''; for(let t=0;t<=y1;t+=y1/4){ g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${sy(t)}" y2="${sy(t)}" stroke="var(--line)"/><text x="${m.l-8}" y="${sy(t)+4}" text-anchor="end">${Math.round(t)}%</text>`; }
+  for(let t=x0;t<=x1;t+=2){ g+=`<text x="${sx(t)}" y="${H-m.b+18}" text-anchor="middle">${t}%</text>`; }
+  const pts=[...st.perPlan].sort((a,b)=>a.plan.commission-b.plan.commission);
+  const dots=pts.map((x,i)=>{ const cx=sx(x.plan.commission), cy=sy(x.share*100); const nx=pts[i+1];
+    const crowded = nx && Math.abs(nx.plan.commission-x.plan.commission)<=3 && Math.abs(nx.share-x.share)<0.1;
+    const left = crowded || x.plan.commission>=21;
+    return `<circle cx="${cx}" cy="${cy}" r="7" fill="var(--ink)"/><text x="${left?cx-10:cx+10}" y="${cy-9}" text-anchor="${left?'end':'start'}" style="fill:var(--ink);font-weight:600">${x.plan.name}</text>`; }).join('');
+  $('scatter').innerHTML = `<div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Scatter of commission rate against share of first recommendations; correlation ${r.toFixed(2)}">${g}
+    <line x1="${sx(x0)}" y1="${sy(Math.max(0,a+b*x0))}" x2="${sx(x1)}" y2="${sy(Math.max(0,a+b*x1))}" stroke="var(--link)" stroke-width="2" stroke-dasharray="6 5"/>${dots}
+    <text x="${(W+m.l)/2}" y="${H-6}" text-anchor="middle">Commission Ditto earns on the plan</text>
+    <text transform="translate(12 ${(H-m.b)/2+20}) rotate(-90)" text-anchor="middle">Share recommended first</text></svg></div>`;
+  // stats
+  $('stats').innerHTML = `
+    <div class="stat"><div class="v">${r.toFixed(2)}<span class="status ${good?'good':'watch'}">${good?'Healthy':'Review rules'}</span></div><div class="d">Commission-to-recommendation correlation. Target: 0.10 or lower.</div></div>
+    <div class="stat"><div class="v">${pct(st.dont)}</div><div class="d">Don’t-buy rate: sessions where we advised buying nothing.</div></div>
+    <div class="stat"><div class="v">${pct(st.por)}<span class="status ${st.por>=0.8?'good':'watch'}">${st.por>=0.8?'On target':'Below target'}</span></div><div class="d">Protected Outcome Rate: replayed claims where the insurer pays 80% or more. Target: 80%.</div></div>
+    <div class="stat"><div class="v">${st.n}</div><div class="d">Sessions in this ledger, ${mine.length} logged by you.</div></div>`;
+  // mix
+  const ins=Object.keys(MARKET_SHARE);
+  $('mix').innerHTML = `<div class="legend"><span><i class="sw" style="background:var(--ink)"></i>Our recommendations</span><span><i class="sw" style="background:var(--line)"></i>Market share</span></div>`+
+    ins.map(k=>{ const rec=st.mix[k]||0, ms=MARKET_SHARE[k]; return `<div class="mixrow"><div>${k}</div><div class="mixbars"><div style="width:${rec*100}%;background:var(--ink)"></div><div style="width:${ms*100}%;background:var(--line)"></div></div><div style="text-align:right">${pct(rec)} vs ${pct(ms)}</div></div>`; }).join('');
+  // insight
+  const worst = PLANS.map(pl=>{ const s=all.filter(x=>x.pick===pl.id); return {pl, n:s.length, por: s.length? s.filter(x=>x.protectedOutcome).length/s.length : 1}; }).filter(x=>x.n>=5).sort((a,b)=>a.por-b.por)[0];
+  $('insight').innerHTML = `<p style="margin-top:0">The rules are not steered by commission, but the outcome check shows a gap. <b>${worst.pl.name}</b> wins many rankings on price, yet only ${pct(worst.por)} of its replayed claims were paid at 80% or more${worst.pl.copay?`, mainly because of its ${worst.pl.copay*100}% co-payment`:''}.</p>
+    <p>This is the ledger doing its job: an outcome signal that feeds back into the rules. The next review would raise the weight on co-payments and sub-limits, then publish the change.</p>`;
+  // sessions table
+  const latest=[...all].sort((a,b)=>b.t-a.t).slice(0,12);
+  $('sessions').innerHTML = `<thead><tr><th>When</th><th>Household</th><th>City</th><th>Verdict</th><th class="num">Commission on pick</th><th>Claim replay</th></tr></thead><tbody>`+
+    latest.map(s=>{ const pl=s.pick?PLANS.find(x=>x.id===s.pick):null; const d=new Date(s.t);
+      return `<tr class="${s.mine?'mine':''}"><td>${d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}, ${d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${FAMILY[s.profile.family].label}, ${s.profile.age}</td><td>${['','Metro','Tier 2','Tier 3'][s.profile.tier]}</td>
+      <td>${pl?`Buy ${pl.name}`:'Don’t buy'}</td><td class="num">${pl?pl.commission+'%':'None'}</td><td>${s.protectedOutcome?'Protected':'Gap found'}</td></tr>`; }).join('')+'</tbody>';
+}
+function show(which){
+  const c=which==='cust'; $('viewCust').hidden=!c; $('viewLedger').hidden=c;
+  $('tabCust').setAttribute('aria-pressed',c); $('tabLedger').setAttribute('aria-pressed',!c);
+  if(!c) renderLedger(); window.scrollTo({top:0});
+}
+// events
+['age','employer','year'].forEach(id=>$(id).addEventListener('input',()=>render(true)));
+['family','planningChild','ped','jobChange'].forEach(id=>$(id).addEventListener('change',()=>render(true)));
+document.querySelectorAll('#tier button').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('#tier button').forEach(x=>x.setAttribute('aria-pressed',x===b)); state.tier=+b.dataset.v; render(true); }));
+$('planA').addEventListener('change',e=>{ state.planA=e.target.value; renderReplay(current.p); });
+$('planB').addEventListener('change',e=>{ state.planB=e.target.value; renderReplay(current.p); });
+$('logBtn').addEventListener('click',logSession);
+$('tabCust').addEventListener('click',()=>show('cust')); $('tabLedger').addEventListener('click',()=>show('ledger'));
+render(true); renderLedger();
+</script>
+</body>
+</html>
